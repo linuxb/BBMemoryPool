@@ -14,52 +14,21 @@ CMemoryPool::~CMemoryPool()
 	destroyPool();
 }
 
-void CMemoryPool::InitPool(size_t nSize, size_t itemSize)
+void CMemoryPool::InitPool(size_t nSize)
 {
 	if (QHeaher == NULL)
 	{
-		if (nSize % itemSize)
-		{
-			std::cerr << "invalid arguments.." << std::endl;
-			nSize = (nSize / itemSize) * itemSize;
-		}
-		QHeaher = new LinkNode(nSize, itemSize);
+		QHeaher = new LinkNode(nSize);
 		if (QHeaher == NULL) throw std::bad_alloc();
 		QTail = QHeaher;
 		mListNodeNums = 1;
+	}
+	if (pMProxy == NULL)
+	{
 		pMProxy = new CMemoryManager;
-		pMProxy->setMemoryAddr(QTail->_pMemory);
-		/*构造管理二叉树*/
-		size_t length = nSize / itemSize;
-		size_t mKeyArr[MAX_NODE / MEMORY_UNIT_SIZE];
-		for (unsigned int i = 1; i <= length; i++)
-		{
-			mKeyArr[i - 1] = itemSize * i;
-		}
-		/*avl树构造*/
-		pMProxy->InitMamager(mKeyArr, length, itemSize);
-		/*树不平衡，完成树旋转*/
+		if (pMProxy == NULL)
+			throw std::bad_alloc();
 	}
-}
-
-void* CMemoryPool::requireMemoryFromRecycle(size_t size)
-{
-	if (RHeader == NULL)
-		return getNewMemory(size);
-	/*检索链表*/
-	RecycleLinkNode* pnode = RHeader;
-	while (pnode != NULL)
-	{
-		if (pnode->_mSize >= size)
-			break;
-		else pnode = pnode->_next;
-	}
-	if (pnode == NULL)
-	{
-		std::cout << "no more free memory..need to malloc new block" << std::endl;
-		return getNewMemory(size);
-	}
-	return pnode->_pRecycledMemory;
 }
 
 void* CMemoryPool::getNewMemory(size_t size)
@@ -71,46 +40,42 @@ void* CMemoryPool::getNewMemory(size_t size)
 	return result;
 }
 
-void CMemoryPool::addNewRecycleNode()
-{
-	/*回收链表空*/
-	if (RHeader == NULL || RTail == NULL)
-	{
-		RHeader = new RecycleLinkNode;
-		if (RHeader == NULL) throw std::bad_alloc();
-		RTail = RHeader;
-		return;
-	}
-	RecycleLinkNode* pnode = new RecycleLinkNode;
-	if (pnode == NULL) throw std::bad_alloc();
-	RTail->_next = pnode;
-	RTail = pnode;
-}
-
+/*export*/
+/*回收对象*/
 template<typename T>
 void CMemoryPool::recyleMemory(T* ptr)
 {
 	/*析构对象*/
 	ptr->~T();
-	addNewRecycleNode();
-	_ASSERT(RTail != NULL);
-	RTail->_mSize = sizeof(T);
-	RTail->_pRecycledMemory = ptr;
+	_ASSERT(pMProxy != NULL);
+	pMProxy->recycleToPool(ptr);
 }
 
-void CMemoryPool::newNode(size_t nSize, size_t itemSize)
+/*获取内存*/
+void* CMemoryPool::requireMemoryFromRecycle(size_t size)
+{
+	_ASSERT(pMProxy != NULL);
+	void* result = pMProxy->getMemoryFromRecycledPool(size);
+	if (result == NULL)
+		return getNewMemory(size);
+	else
+		return result;
+}
+
+void CMemoryPool::newNode(size_t nSize)
 {
 	if (QTail == NULL || pMProxy == NULL)
 	{
 		std::cerr << "LinkList should be inited.." << std::endl;
-		InitPool(nSize, itemSize);
+		InitPool(nSize);
 		return;
 	}
-	LinkNode* pnode = new LinkNode(nSize, itemSize);
+	LinkNode* pnode = new LinkNode(nSize);
 	if (pnode == NULL) throw std::bad_alloc();
 	QTail->_next = pnode;
 	QTail = pnode;
 	pMProxy->setMemoryAddr(QTail->_pMemory);
+	mListNodeNums++;
 }
 
 void CMemoryPool::destroyPool()
@@ -127,6 +92,23 @@ void CMemoryPool::destroyPool()
 	delete q;
 }
 
+void MemoryFactory(int num)
+{
+	std::vector<Traii*> objList;
+	for (int i = 0; i < 10; i++)
+	{
+		Traii* myobj = (Traii*)CMemoryPool::getDefaultMemoryPool()->requireMemoryFromRecycle(sizeof(Traii));
+		objList.push_back(myobj);
+	}
+	while (!objList.empty())
+	{
+		Traii* objToRecycle = objList.back();
+		objList.pop_back();
+		CMemoryPool::getDefaultMemoryPool()->recyleMemory(objToRecycle);
+	}
+}
+
+///测试内存池
 
 int _tmain(int argc, _TCHAR* argv[])
 {

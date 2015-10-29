@@ -19,39 +19,204 @@ CMemoryManager ::~CMemoryManager()
 {
 }
 
-void CMemoryManager::InitMamager(const size_t mkey[], int length, const size_t size)
+void CMemoryManager::InitMamager(int length, const size_t size)
 {
-	CreateTree(mkey, length, size);
+	
 }
 
-//TODO: 二叉搜索树插入节点
-bool CManagerTree::xInsertNode(TreeNode* pre, const size_t element)
+int calcHeight(TreeNode* tnode)
+{
+	if (tnode == NULL) return 0;
+	return tnode->_height;
+}
+
+int maxHeight(int a, int b)
+{
+	return (a > b) ? a : b;
+}
+
+//TODO: avl树插入节点
+TreeNode* CManagerTree::xInsertNode(TreeNode* pre, const size_t element,void* pMemory,TreeNode* pthr)
 {
 	/*空树*/
+	/*构建二叉树节点*/
 	if (pre == NULL)
 	{
 		pre = new TreeNode;
 		if (pre == NULL) throw std::bad_alloc();
-		pre->_pMemory = NULL;
-		pre->_mUsedByte = 0;
-		pre->_capacity = MEMORY_UNIT_SIZE;
-		pre->_mIdx = element;
-		return true;
+		pre->_capacity = element;
+		/*链表空*/
+		/*初始化链表*/
+		if (pre->RHeader == NULL)
+		{
+			TreeMemListNode* mnode = new TreeMemListNode;
+			if (mnode == NULL) throw std::bad_alloc();
+			pre->RHeader = mnode;
+			pre->RTail = pre->RHeader;
+			pre->listNum++;
+			pre->RTail->_pMemory = pMemory;
+			xCurrNode = pre;
+		}
 	}
-	if (pre->_mIdx == element)
+	if (pre->_capacity == element)
 	{
-		throw std::invalid_argument("key of BST can not be equal");
-		exit(1);
+		if (pre->RHeader == NULL)
+		{
+			std::cerr << "链表空指针异常" << std::endl;
+			throw std::nullptr_t();
+		}
+		/*链表插入节点*/
+		TreeMemListNode* mnode = new TreeMemListNode;
+		if (mnode == NULL) throw std::bad_alloc();
+		_ASSERT(pre->RTail != NULL);
+		pre->RTail->_pNext = mnode;
+		pre->RTail = mnode;
+		pre->RTail->_pMemory = pMemory;
+		pre->listNum++;
 	}
 	/*二叉树递归*/
-	if (pre->_mIdx > element) return xInsertNode(pre->_LChild, element);
-	else return xInsertNode(pre->_RChild, element);
+	if (pre->_capacity > element)
+	{
+		pre->_RChild = xInsertNode(pre->_RChild, element, pMemory, pre);
+		if (!xCheckTreeBalance(pre, 0))
+		{
+			/*重构树形*/
+			pre = xReconstructTree(pre, element, 0);
+		}
+	}
+	else
+	{
+		pre->_LChild = xInsertNode(pre->_LChild, element, pMemory, pre);
+		if (!xCheckTreeBalance(pre, 1))
+		{
+			pre = xReconstructTree(pre, element, 1);
+		}
+	}
+	/*重新计算高度*/
+	pre->_height = maxHeight(calcHeight(pre->_LChild), calcHeight(pre->_RChild));
+	return pre;
+	/*avl树不平衡*/
+	/*树旋转保持平衡*/
 }
 
+/*检查树是否平衡*/
+///flag:1(左子树插入)
+bool CManagerTree::xCheckTreeBalance(TreeNode* &tnode,int flag)
+{
+	int delta = calcHeight(tnode->_LChild) - calcHeight(tnode->_RChild);
+	delta = (flag == 1) ? delta : (-delta);
+	if (delta == 2) return false;
+	return true;
+}
 
+/*重建二叉树树形*/
+///flag:1左子树插入
+TreeNode* CManagerTree::xReconstructTree(TreeNode* &tnode,size_t key,int flag)
+{
+	/*二叉树不平衡*/
+	/*判断构型*/
+	_ASSERT(tnode->_LChild != NULL && tnode->_RChild != NULL);
+	/*左子树插入*/
+	if (flag == 1)
+	{
+		_ASSERT(key != tnode->_LChild->_capacity);
+		if (key < tnode->_LChild->_capacity)
+		{
+			/*LL型*/
+			/*右旋*/
+			return SingleRotateTree(tnode, 0);
+		}
+		else
+		{
+			/*LR型*/
+			/*左右旋*/
+			return DoubleRoatateTree(tnode, 1);
+		}
+	}
+	/*右子树插入*/
+	if (flag == 0)
+	{
+		_ASSERT(key != tnode->_RChild->_capacity);
+		if (key < tnode->_RChild->_capacity)
+		{
+			/*RL型*/
+			/*右左旋*/
+			return DoubleRoatateTree(tnode, 0);
+		}
+		else
+		{
+			/*RR型*/
+			/*左旋*/
+			return SingleRotateTree(tnode, 1);
+		}
+	}
+	else
+	{
+		throw std::invalid_argument("error flag to reconstruct the tree");
+		exit(1);
+	}
+}
+
+/*单旋转*/
+///flag:1左旋 flag:0右旋
+TreeNode* CManagerTree::SingleRotateTree(TreeNode* &tnode, int flag)
+{
+	/*右旋*/
+	if (flag == 1)
+	{
+		TreeNode* porigin = tnode->_LChild;
+		tnode->_LChild = porigin->_RChild;
+		porigin->_RChild = tnode;
+		/*重新子树计算高度*/
+		tnode->_height = maxHeight(calcHeight(tnode->_LChild), calcHeight(tnode->_RChild));
+		porigin->_height = maxHeight(calcHeight(porigin->_LChild),calcHeight(porigin->_RChild));
+		return porigin;
+	}
+	/*左旋*/
+	if (flag == 0)
+	{
+		TreeNode* porigin = tnode->_RChild;
+		tnode->_RChild = porigin->_LChild;
+		porigin->_LChild = tnode;
+		tnode->_height = maxHeight(calcHeight(tnode->_LChild), calcHeight(tnode->_RChild));
+		porigin->_height = maxHeight(calcHeight(porigin->_LChild), calcHeight(porigin->_RChild));
+		return porigin;
+	}
+	else
+	{
+		throw std::invalid_argument("error flag to reconstruct the tree");
+		exit(1);
+	}
+}
+
+/*双旋转*/
+///flag:1左右旋 flag:0右左旋
+TreeNode* CManagerTree::DoubleRoatateTree(TreeNode* &tnode, int flag)
+{
+	/*左右旋*/
+	if (flag == 1)
+	{
+		/*左旋*/
+		tnode->_LChild = SingleRotateTree(tnode->_LChild, 1);
+		/*右旋*/
+		return SingleRotateTree(tnode, 0);
+	}
+	if (flag == 0)
+	{
+		/*右旋*/
+		tnode->_RChild = SingleRotateTree(tnode->_RChild, 0);
+		/*左旋*/
+		return SingleRotateTree(tnode, 1);
+	}
+	else
+	{
+		throw std::invalid_argument("error flag to reconstruct the tree");
+		exit(1);
+	}
+}
 
 //TODO: 二叉树前序遍历
-bool CManagerTree::xTraveral(TreeNode* pnode,const void(*func)(TreeNode*))
+bool CManagerTree::xTraveral(TreeNode* &pnode,const void(*func)(TreeNode*))
 {
 	if (pnode == NULL)
 	{
@@ -73,21 +238,48 @@ bool CManagerTree::xTraveral(TreeNode* pnode,const void(*func)(TreeNode*))
 	else return true;
 }
 
-//树节点初始内存块分配
-void CMemoryManager::TInitMemoryUnitForNode(TreeNode* pnode)
+/*查找回收池*/
+///从回收池中获取内存
+void* CManagerTree::xSearchNode(size_t size,TreeNode* tnode)
 {
-	if (pnode == NULL)
-		throw std::invalid_argument("Pointer can not be null");
-	char* addr = (char*)pMemory;
-	addr += pnode->_mIdx;
-	pnode->_pMemory = addr;
+	/*回收树空或没有对应内存节点*/
+	if (tnode == NULL)
+		return NULL;
+	if (size == tnode->_capacity)
+	{
+		/*从链表获取内存指针*/
+		if (tnode->RTail == NULL)
+			/*无复用内存*/
+			return NULL;
+		/*前驱指针*/
+		TreeMemListNode* proip = tnode->RHeader;
+		while (proip->_pNext != tnode->RTail)
+			proip = proip->_pNext;
+		void* result = tnode->RTail->_pMemory;
+		delete tnode->RTail;
+		proip->_pNext = NULL;
+		tnode->RTail = proip;
+		tnode->listNum--;
+		return result;
+	}
+	/*右子树递归*/
+	if (size > tnode->_capacity)
+		return xSearchNode(size, tnode->_RChild);
+	/*左子树递归*/
+	else
+		return xSearchNode(size, tnode->_LChild);
 }
 
-//TODO: 二叉树构建
-void CManagerTree::CreateTree(const size_t mkey[], int length,const size_t size)
+/*export*/
+/*向回收树添加节点*/
+template<typename T>
+void CMemoryManager::recycleToPool(T* ptr)
 {
-	for (int i = 0; i < length; i++)
-	{
-		xInsertNode(pManagerTreeRoot, mkey[i]);
-	}
+	pManagerTreeRoot = xInsertNode(pManagerTreeRoot, sizeof(T), ptr, NULL);
+}
+
+/*在回收树中获取内存*/
+void* CMemoryManager::getMemoryFromRecycledPool(size_t size)
+{
+	return xSearchNode(size, pManagerTreeRoot);
 }

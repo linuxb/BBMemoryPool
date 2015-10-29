@@ -5,6 +5,22 @@
 
 #include "CMemoryManager.h"
 
+/*测试类*/
+class Traii
+{
+public:
+	Traii() {}
+	Traii(int val) { _val = val; }
+	~Traii()
+	{
+		std::cout << "object destroyed.." << std::endl;
+	}
+
+private:
+	int _val;
+};
+
+
 class CMemoryPool
 {
 public:
@@ -12,27 +28,41 @@ public:
 	/*单例*/
 	static inline CMemoryPool* getDefaultMemoryPool()
 	{
-		return new CMemoryPool;
+		if (mPool == NULL)
+			mPool = new CMemoryPool;
+		return mPool;
 	}
-	void InitPool(size_t nSize = NODE_MEMORY, size_t itemSize = MEMORY_UNIT_SIZE);
-	void newNode(size_t nSize = NODE_MEMORY, size_t itemSize = MEMORY_UNIT_SIZE);
+	void InitPool(size_t nSize = NODE_MEMORY);
 	void destroyPool();
 	void* getNewMemory(size_t size);
 
 	template<typename T>
-	void recyleMemory(T* ptr);
-	void addNewRecycleNode(void);
-
+	void recyleMemory(T*);
 	void* requireMemoryFromRecycle(size_t);
 
 private:
 	CMemoryPool();
+	static CMemoryPool* mPool;
 	/*内存链表*/
 	LinkNode* QHeaher = NULL;
 	LinkNode* QTail = NULL;
 	int mListNodeNums;
 	CMemoryManager* pMProxy = NULL;
-	/*回收链表*/
-	RecycleLinkNode* RHeader = NULL;
-	RecycleLinkNode* RTail = NULL;
+	void newNode(size_t nSize = NODE_MEMORY);
+	/*内嵌私有类*/
+	/*RAII技法*/
+	class GCWorker
+	{
+	public:
+		/*析构回收单例*/
+		~GCWorker()
+		{
+			if (CMemoryPool::getDefaultMemoryPool() != NULL)
+			{
+				delete CMemoryPool::mPool;
+			}
+		}
+	};
+	/*程序结束时析构函数被调用*/
+	static GCWorker mGcWorker;
 };

@@ -16,15 +16,20 @@ public:
 	CManagerTree();
 	virtual ~CManagerTree();
 	/*构造二叉树*/
-	void CreateTree(const size_t mkey[], int length, const size_t size = MEMORY_UNIT_SIZE);
-
+	TreeNode* getMemoryPtr() { return pManagerTreeRoot; }
 protected:
 	void xInit();
-	bool xTraveral(TreeNode* pnode,const void(*func)(TreeNode*));
-	bool xInsertNode(TreeNode* pre, const size_t element);
+	bool xTraveral(TreeNode*&,const void(*)(TreeNode*));
+	TreeNode* xInsertNode(TreeNode*, const size_t,void*,TreeNode*);
+	void* xSearchNode(const size_t,TreeNode*);
+	bool xCheckTreeBalance(TreeNode*&,int);	//检查avl树是否平衡
+	TreeNode* xReconstructTree(TreeNode*&, size_t, int);	//调整树形
+	TreeNode* pManagerTreeRoot = NULL;	//管理树根节点指针
 	size_t xDepth;
+	TreeNode* xCurrNode = NULL;
 private:
-	TreeNode* pManagerTreeRoot;	//管理树根节点指针
+	TreeNode* DoubleRoatateTree(TreeNode*&, int);	//树双旋转
+	TreeNode* SingleRotateTree(TreeNode*&, int);	//树单旋转
 };
 
 class CMemoryManager : CManagerTree
@@ -32,11 +37,11 @@ class CMemoryManager : CManagerTree
 public:
 	CMemoryManager ();
 	~CMemoryManager ();
-	size_t CaculateFreeMemory();
-	void InitMamager(const size_t mkey[], int length, const size_t size = MEMORY_UNIT_SIZE);
-	void TInitMemoryUnitForNode(TreeNode* pnode);
+	void InitMamager(int, const size_t size = MEMORY_UNIT_SIZE);
 	void setMemoryAddr(void* pMemory) { this->pMemory = pMemory; }
+	template<typename T>
+	void recycleToPool(T*);
+	void* getMemoryFromRecycledPool(size_t);
 private:
-	TreeNode* pTroot;
 	void* pMemory;	//当前链表节点内存区起始地址
 };

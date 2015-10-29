@@ -32,17 +32,35 @@ private:
 
 };
 
-/*Binary Tree*/
+/*avl Tree*/
 struct TreeNode
 {
-	void* _pMemory;		//内存块指针
-	size_t _mUsedByte;	//已用内存
 	size_t _capacity;
-	size_t _mIdx;		//内存位
+	TreeMemListNode* RTail = NULL;	//回收链表头指针
+	TreeMemListNode* RHeader = NULL;	//尾指针
+	size_t listNum = 0;
+
+	/*回溯节点指针*/
+	TreeNode* _pThr = NULL;
+
+	/*当前树高度*/
+	int _height;
 
 	/*children*/
 	TreeNode* _LChild = NULL;
 	TreeNode* _RChild = NULL;
+};
+
+struct TreeMemListNode
+{
+	void* _pMemory;		//内存块指针
+	TreeMemListNode* _pNext = NULL;
+	/*析构*/
+	/*防止内存泄露*/
+	~TreeMemListNode()
+	{
+		delete _pMemory;
+	}
 };
 
 /*linklist*/
@@ -55,20 +73,15 @@ struct LinkNode
 	size_t _itemSize;
 	void* _pAlloateInit = NULL;
 
-	LinkNode(size_t size,size_t itemsize)
+	LinkNode(size_t size)
 	{
 		if (size > MAX_NODE)
 		{
 			throw std::invalid_argument("size is too large,no more memory");
 		}
-		if (itemsize > MAX_ITEM_SIZE)
-		{
-			throw std::invalid_argument("itemSize is too large");
-		}
 		/*Allocate*/
 		_pMemory = TAllocator::Allocate(size);
 		if (_pMemory == NULL) throw std::bad_alloc();
-
 		_mUsedByte = 0;
 		_capacity = size;
 		_pAlloateInit = _pMemory;
@@ -78,13 +91,4 @@ struct LinkNode
 	{
 		TAllocator::deAllocate(_pMemory, _capacity);
 	}
-};
-
-/*回收链表*/
-struct RecycleLinkNode
-{
-	void* _pRecycledMemory = NULL;
-	size_t _mSize;
-
-	RecycleLinkNode* _next = NULL;
 };
