@@ -7,7 +7,8 @@
 
 #define MAX_NODE 1024
 #define NODE_MEMORY 640
-#define MAX_ITEM_SIZE 16
+#define INCREMENT 2
+#define MAX_MEMORY_REQUIRE 1000000
 
 
 /*空间配置器*/
@@ -20,24 +21,37 @@ public:
 
 	static inline void* Allocate(size_t size)
 	{
+		std::cout << "Allocate " << size << "B memory totally\n" << std::endl;
 		return ::operator new(size, ::std::nothrow);
 	}
 
 	static inline void deAllocate(void* ptr, size_t size)
 	{
 		::operator delete(ptr, ::std::nothrow);
+		std::cout << "free " << size << "B memory totally\n" << std::endl;
 	}
 
 private:
 
 };
 
+struct TreeMemListNode
+{
+	void* _pMemory;		//内存块指针
+	TreeMemListNode* _pNext = NULL;
+	/*析构*/
+	/*防止内存泄露*/
+	~TreeMemListNode()
+	{
+	}
+};
+
 /*avl Tree*/
 struct TreeNode
 {
 	size_t _capacity;
-	TreeMemListNode* RTail = NULL;	//回收链表头指针
-	TreeMemListNode* RHeader = NULL;	//尾指针
+	TreeMemListNode* RHeader = NULL;	//回收链表头指针
+	TreeMemListNode* RTail = NULL;	//尾指针
 	size_t listNum = 0;
 
 	/*回溯节点指针*/
@@ -49,17 +63,21 @@ struct TreeNode
 	/*children*/
 	TreeNode* _LChild = NULL;
 	TreeNode* _RChild = NULL;
-};
 
-struct TreeMemListNode
-{
-	void* _pMemory;		//内存块指针
-	TreeMemListNode* _pNext = NULL;
 	/*析构*/
-	/*防止内存泄露*/
-	~TreeMemListNode()
+	~TreeNode()
 	{
-		delete _pMemory;
+		if (RHeader != NULL)
+		{
+			TreeMemListNode* pcurr = RHeader;
+			TreeMemListNode* ppre;
+			while (pcurr != NULL)
+			{
+				ppre = pcurr;
+				pcurr = pcurr->_pNext;
+				delete ppre;
+			}
+		}
 	}
 };
 

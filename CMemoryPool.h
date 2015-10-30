@@ -23,26 +23,26 @@ private:
 
 class CMemoryPool
 {
+private:
+	CMemoryPool();
+	/*引用性声明*/
+	static CMemoryPool* mPool;
 public:
 	~CMemoryPool();
 	/*单例*/
-	static inline CMemoryPool* getDefaultMemoryPool()
+	static CMemoryPool* getDefaultMemoryPool()
 	{
 		if (mPool == NULL)
-			mPool = new CMemoryPool;
+			mPool = new CMemoryPool();
 		return mPool;
 	}
 	void InitPool(size_t nSize = NODE_MEMORY);
 	void destroyPool();
 	void* getNewMemory(size_t size);
-
 	template<typename T>
 	void recyleMemory(T*);
 	void* requireMemoryFromRecycle(size_t);
-
 private:
-	CMemoryPool();
-	static CMemoryPool* mPool;
 	/*内存链表*/
 	LinkNode* QHeaher = NULL;
 	LinkNode* QTail = NULL;
@@ -57,7 +57,7 @@ private:
 		/*析构回收单例*/
 		~GCWorker()
 		{
-			if (CMemoryPool::getDefaultMemoryPool() != NULL)
+			if (CMemoryPool::mPool != NULL)
 			{
 				delete CMemoryPool::mPool;
 			}

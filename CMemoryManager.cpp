@@ -9,6 +9,9 @@ CManagerTree::CManagerTree()
 
 CManagerTree::~CManagerTree()
 {
+	/*回收内存*/
+	std::cout << "destroying our Manager Tree...\n" << std::endl;
+	DestroyedTree(pManagerTreeRoot);
 }
 
 CMemoryManager::CMemoryManager()
@@ -17,11 +20,12 @@ CMemoryManager::CMemoryManager()
 
 CMemoryManager ::~CMemoryManager()
 {
+	std::cout << "invoking the base class deconstructor..." << std::endl;
 }
 
 void CMemoryManager::InitMamager(int length, const size_t size)
 {
-	
+	std::cout << "Manager starting....." << "\n" << std::endl;
 }
 
 int calcHeight(TreeNode* tnode)
@@ -35,7 +39,7 @@ int maxHeight(int a, int b)
 	return (a > b) ? a : b;
 }
 
-//TODO: avl树插入节点
+///TODO: avl树插入节点
 TreeNode* CManagerTree::xInsertNode(TreeNode* pre, const size_t element,void* pMemory,TreeNode* pthr)
 {
 	/*空树*/
@@ -47,6 +51,7 @@ TreeNode* CManagerTree::xInsertNode(TreeNode* pre, const size_t element,void* pM
 		pre->_capacity = element;
 		/*链表空*/
 		/*初始化链表*/
+		std::cout << "initializing the memoryList on Treenode...\n" << std::endl;
 		if (pre->RHeader == NULL)
 		{
 			TreeMemListNode* mnode = new TreeMemListNode;
@@ -57,6 +62,10 @@ TreeNode* CManagerTree::xInsertNode(TreeNode* pre, const size_t element,void* pM
 			pre->RTail->_pMemory = pMemory;
 			xCurrNode = pre;
 		}
+		std::cout << "first node for recycled memory has been built\n" << std::endl;
+		///避免递归导致堆栈溢出
+		pre->_height = maxHeight(calcHeight(pre->_LChild), calcHeight(pre->_RChild));
+		return pre;
 	}
 	if (pre->_capacity == element)
 	{
@@ -73,6 +82,7 @@ TreeNode* CManagerTree::xInsertNode(TreeNode* pre, const size_t element,void* pM
 		pre->RTail = mnode;
 		pre->RTail->_pMemory = pMemory;
 		pre->listNum++;
+		std::cout << "new memory node has been inserted\n" << std::endl;
 	}
 	/*二叉树递归*/
 	if (pre->_capacity > element)
@@ -81,6 +91,7 @@ TreeNode* CManagerTree::xInsertNode(TreeNode* pre, const size_t element,void* pM
 		if (!xCheckTreeBalance(pre, 0))
 		{
 			/*重构树形*/
+			std::cout << "reconstructing the managerTree....\n" << std::endl;
 			pre = xReconstructTree(pre, element, 0);
 		}
 	}
@@ -89,6 +100,7 @@ TreeNode* CManagerTree::xInsertNode(TreeNode* pre, const size_t element,void* pM
 		pre->_LChild = xInsertNode(pre->_LChild, element, pMemory, pre);
 		if (!xCheckTreeBalance(pre, 1))
 		{
+			std::cout << "reconstructing the managerTree....\n" << std::endl;
 			pre = xReconstructTree(pre, element, 1);
 		}
 	}
@@ -124,12 +136,14 @@ TreeNode* CManagerTree::xReconstructTree(TreeNode* &tnode,size_t key,int flag)
 		{
 			/*LL型*/
 			/*右旋*/
+			std::cout << "reconstructing LL...." << std::endl;
 			return SingleRotateTree(tnode, 0);
 		}
 		else
 		{
 			/*LR型*/
 			/*左右旋*/
+			std::cout << "reconstructing LR...." << std::endl;
 			return DoubleRoatateTree(tnode, 1);
 		}
 	}
@@ -141,12 +155,14 @@ TreeNode* CManagerTree::xReconstructTree(TreeNode* &tnode,size_t key,int flag)
 		{
 			/*RL型*/
 			/*右左旋*/
+			std::cout << "reconstructing RL...." << std::endl;
 			return DoubleRoatateTree(tnode, 0);
 		}
 		else
 		{
 			/*RR型*/
 			/*左旋*/
+			std::cout << "reconstructing RR...." << std::endl;
 			return SingleRotateTree(tnode, 1);
 		}
 	}
@@ -168,6 +184,7 @@ TreeNode* CManagerTree::SingleRotateTree(TreeNode* &tnode, int flag)
 		tnode->_LChild = porigin->_RChild;
 		porigin->_RChild = tnode;
 		/*重新子树计算高度*/
+		std::cout << "recaculate the height of current node...\n" << std::endl;
 		tnode->_height = maxHeight(calcHeight(tnode->_LChild), calcHeight(tnode->_RChild));
 		porigin->_height = maxHeight(calcHeight(porigin->_LChild),calcHeight(porigin->_RChild));
 		return porigin;
@@ -178,6 +195,7 @@ TreeNode* CManagerTree::SingleRotateTree(TreeNode* &tnode, int flag)
 		TreeNode* porigin = tnode->_RChild;
 		tnode->_RChild = porigin->_LChild;
 		porigin->_LChild = tnode;
+		std::cout << "recaculate the height of current node...\n" << std::endl;
 		tnode->_height = maxHeight(calcHeight(tnode->_LChild), calcHeight(tnode->_RChild));
 		porigin->_height = maxHeight(calcHeight(porigin->_LChild), calcHeight(porigin->_RChild));
 		return porigin;
@@ -220,7 +238,7 @@ bool CManagerTree::xTraveral(TreeNode* &pnode,const void(*func)(TreeNode*))
 {
 	if (pnode == NULL)
 	{
-		std::cout << "NULL Tree...Constructing..." << std::endl;
+		std::cout << "NULL Tree...Constructing...\n" << std::endl;
 		return false;
 	}
 	if (pnode->_LChild == NULL)
@@ -242,6 +260,7 @@ bool CManagerTree::xTraveral(TreeNode* &pnode,const void(*func)(TreeNode*))
 ///从回收池中获取内存
 void* CManagerTree::xSearchNode(size_t size,TreeNode* tnode)
 {
+	std::cout << "searching for available memory node....\n" << std::endl;
 	/*回收树空或没有对应内存节点*/
 	if (tnode == NULL)
 		return NULL;
@@ -260,6 +279,7 @@ void* CManagerTree::xSearchNode(size_t size,TreeNode* tnode)
 		proip->_pNext = NULL;
 		tnode->RTail = proip;
 		tnode->listNum--;
+		std::cout << "get " << size << "B memory\n" << std::endl;
 		return result;
 	}
 	/*右子树递归*/
@@ -272,14 +292,27 @@ void* CManagerTree::xSearchNode(size_t size,TreeNode* tnode)
 
 /*export*/
 /*向回收树添加节点*/
-template<typename T>
-void CMemoryManager::recycleToPool(T* ptr)
+void CMemoryManager::recycleToPool(size_t size,void* ptr)
 {
-	pManagerTreeRoot = xInsertNode(pManagerTreeRoot, sizeof(T), ptr, NULL);
+	std::cout << "recycle " <<size<<"B memory\n"<<std::endl;
+	pManagerTreeRoot = xInsertNode(pManagerTreeRoot, size, ptr, NULL);
 }
 
 /*在回收树中获取内存*/
 void* CMemoryManager::getMemoryFromRecycledPool(size_t size)
 {
+	std::cout << "search " << size << "B memory\n" << std::endl;
 	return xSearchNode(size, pManagerTreeRoot);
+}
+
+/*销毁树*/
+void CManagerTree::DestroyedTree(TreeNode* &tnode)
+{
+	if (tnode == NULL)
+		return;
+	/*左子树*/
+	DestroyedTree(tnode->_LChild);
+	/*右子树*/
+	DestroyedTree(tnode->_RChild);
+	delete tnode;
 }

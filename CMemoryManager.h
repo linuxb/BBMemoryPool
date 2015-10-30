@@ -4,7 +4,6 @@
 #define _CMEMORYMANAGER_H_
 #endif
 
-#include "stdafx.h"
 #include "CTreeLinkList.h"
 
 #define MAX_LIST_KEY 6
@@ -30,17 +29,17 @@ protected:
 private:
 	TreeNode* DoubleRoatateTree(TreeNode*&, int);	//树双旋转
 	TreeNode* SingleRotateTree(TreeNode*&, int);	//树单旋转
+	void DestroyedTree(TreeNode*&);	//析构时销毁树
 };
 
-class CMemoryManager : CManagerTree
+class CMemoryManager : public CManagerTree
 {
 public:
 	CMemoryManager ();
 	~CMemoryManager ();
 	void InitMamager(int, const size_t size = MEMORY_UNIT_SIZE);
 	void setMemoryAddr(void* pMemory) { this->pMemory = pMemory; }
-	template<typename T>
-	void recycleToPool(T*);
+	void recycleToPool(size_t,void*);
 	void* getMemoryFromRecycledPool(size_t);
 private:
 	void* pMemory;	//当前链表节点内存区起始地址
